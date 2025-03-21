@@ -379,12 +379,11 @@ const updatePassword = async () => {
 
     passwordLoading.value = true;
     try {
-      // 在实际项目中，这里应该调用API更新密码
-      // 示例代码：
-      // await axios.put('/api/users/password', {
-      //   currentPassword: passwordForm.value.currentPassword,
-      //   newPassword: passwordForm.value.newPassword
-      // });
+      // 调用API更新密码
+      await axios.put(`/users/password/${authStore.user.id}`, {
+        currentPassword: passwordForm.value.currentPassword,
+        newPassword: passwordForm.value.newPassword,
+      });
 
       ElMessage.success("密码修改成功");
       // 清空表单
@@ -394,7 +393,16 @@ const updatePassword = async () => {
         confirmPassword: "",
       };
     } catch (error) {
-      ElMessage.error("密码修改失败");
+      console.error("密码修改失败:", error);
+      let errorMsg = "密码修改失败";
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        errorMsg = error.response.data.message;
+      }
+      ElMessage.error(errorMsg);
     } finally {
       passwordLoading.value = false;
     }
