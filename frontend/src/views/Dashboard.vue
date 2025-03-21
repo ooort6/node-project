@@ -1,103 +1,149 @@
 <template>
   <div class="dashboard-container">
     <el-row :gutter="20">
-      <el-col :span="8">
-        <el-card shadow="hover" class="dashboard-card">
+      <el-col :span="6">
+        <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>个人信息</span>
-            </div>
-          </template>
-          <div class="user-info">
-            <el-avatar :size="64" icon="UserFilled" />
-            <h3>{{ authStore.user?.username }}</h3>
-            <p>
-              角色：{{
-                authStore.user?.role === "admin" ? "管理员" : "普通用户"
-              }}
-            </p>
-            <p>邮箱：{{ authStore.user?.email }}</p>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="8">
-        <el-card shadow="hover" class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>系统信息</span>
-            </div>
-          </template>
-          <div class="system-info">
-            <p>当前时间：{{ currentTime }}</p>
-            <p>系统版本：v1.0.0</p>
-            <p>在线状态：<el-tag type="success">正常</el-tag></p>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="8">
-        <el-card shadow="hover" class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>快捷操作</span>
-            </div>
-          </template>
-          <div class="quick-actions">
-            <el-button type="primary" @click="$router.push('/profile')">
               <el-icon><User /></el-icon>
-              个人信息
-            </el-button>
-            <el-button type="warning" @click="handleLogout">
-              <el-icon><SwitchButton /></el-icon>
-              退出登录
-            </el-button>
+              <span>用户数量</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <h2>{{ stats.userCount || 0 }}</h2>
+            <p>系统注册用户总数</p>
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-icon><List /></el-icon>
+              <span>待办事项</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <h2>{{ stats.todoCount || 0 }}</h2>
+            <p>{{ completedPercent }}% 已完成</p>
+            <el-progress
+              :percentage="completedPercent"
+              :status="progressStatus"
+            ></el-progress>
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-icon><Bell /></el-icon>
+              <span>系统公告</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <h2>{{ stats.noticeCount || 0 }}</h2>
+            <p>最近更新: {{ stats.lastNoticeTime || "无" }}</p>
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-icon><Calendar /></el-icon>
+              <span>今日日期</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <h2>{{ currentDate }}</h2>
+            <p>{{ greeting }}</p>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="16">
+    <el-row :gutter="20" class="mt-20">
+      <el-col :span="12">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>系统公告</span>
+              <span>最近待办事项</span>
+              <el-button type="text" @click="$router.push('/dashboard/todos')"
+                >查看所有</el-button
+              >
             </div>
           </template>
-          <div class="notice-list">
-            <el-timeline>
-              <el-timeline-item
-                v-for="(notice, index) in notices"
-                :key="index"
-                :timestamp="notice.date"
-                :type="notice.type"
-              >
-                {{ notice.content }}
-              </el-timeline-item>
-            </el-timeline>
+          <div v-if="recentTodos.length === 0" class="empty-data">
+            <el-empty description="暂无待办事项"></el-empty>
           </div>
+          <el-table v-else :data="recentTodos" style="width: 100%">
+            <el-table-column prop="content" label="内容" width="300">
+              <template #default="scope">
+                <el-text
+                  :type="scope.row.completed ? 'info' : ''"
+                  :decoration="scope.row.completed ? 'line-through' : ''"
+                >
+                  {{ scope.row.content }}
+                </el-text>
+              </template>
+            </el-table-column>
+            <el-table-column prop="priority" label="优先级" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.priority" size="small">
+                  {{ getPriorityLabel(scope.row.priority) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="completed" label="状态" width="100">
+              <template #default="scope">
+                <el-tag
+                  :type="scope.row.completed ? 'success' : 'warning'"
+                  size="small"
+                >
+                  {{ scope.row.completed ? "已完成" : "待完成" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="createTime"
+              label="创建时间"
+            ></el-table-column>
+          </el-table>
         </el-card>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :span="12">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>待办事项</span>
+              <span>最近系统公告</span>
+              <el-button type="text" @click="$router.push('/dashboard/notices')"
+                >查看所有</el-button
+              >
             </div>
           </template>
-          <div class="todo-list">
-            <el-checkbox-group v-model="checkedTodos">
-              <div
-                v-for="(todo, index) in todos"
-                :key="index"
-                class="todo-item"
-              >
-                <el-checkbox :label="todo">{{ todo }}</el-checkbox>
-              </div>
-            </el-checkbox-group>
+          <div v-if="recentNotices.length === 0" class="empty-data">
+            <el-empty description="暂无系统公告"></el-empty>
           </div>
+          <el-table v-else :data="recentNotices" style="width: 100%">
+            <el-table-column
+              prop="title"
+              label="标题"
+              width="300"
+            ></el-table-column>
+            <el-table-column prop="type" label="类型" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.type" size="small">
+                  {{ getNoticeTypeLabel(scope.row.type) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="date" label="发布时间"></el-table-column>
+          </el-table>
         </el-card>
       </el-col>
     </el-row>
@@ -105,68 +151,114 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "../stores/auth";
-import { User, SwitchButton } from "@element-plus/icons-vue";
-import { ElMessageBox } from "element-plus";
+import { ref, computed, onMounted } from "vue";
+import { User, List, Bell, Calendar } from "@element-plus/icons-vue";
+import { getTodos } from "../api/todo";
+import { getNotices } from "../api/notice";
+import axios from "axios";
 
-const router = useRouter();
-const authStore = useAuthStore();
-
-// 当前时间
-const currentTime = ref(new Date().toLocaleString());
-const timer = setInterval(() => {
-  currentTime.value = new Date().toLocaleString();
-}, 1000);
-
-// 系统公告
-const notices = ref([
-  {
-    content: "系统上线啦！欢迎使用我们的后台管理系统",
-    date: "2024-03-18",
-    type: "success",
-  },
-  {
-    content: "新增了个人信息修改功能",
-    date: "2024-03-17",
-    type: "info",
-  },
-  {
-    content: "系统维护通知：本周日凌晨2-4点进行系统维护",
-    date: "2024-03-16",
-    type: "warning",
-  },
-]);
-
-// 待办事项
-const todos = ref([
-  "完善个人信息",
-  "查看系统使用指南",
-  "了解最新功能更新",
-  "反馈系统使用体验",
-]);
-const checkedTodos = ref([]);
-
-// 退出登录
-const handleLogout = () => {
-  ElMessageBox.confirm("确定要退出登录吗？", "提示", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(() => {
-    authStore.logout();
-    router.push("/login");
-  });
-};
-
-onMounted(() => {
-  // 组件挂载时的逻辑
+// 统计数据
+const stats = ref({
+  userCount: 0,
+  todoCount: 0,
+  todoCompletedCount: 0,
+  noticeCount: 0,
+  lastNoticeTime: "",
 });
 
-onUnmounted(() => {
-  // 清除定时器
-  clearInterval(timer);
+// 最近数据
+const recentTodos = ref([]);
+const recentNotices = ref([]);
+
+// 计算属性
+const completedPercent = computed(() => {
+  if (stats.value.todoCount === 0) return 0;
+  return Math.round(
+    (stats.value.todoCompletedCount / stats.value.todoCount) * 100
+  );
+});
+
+const progressStatus = computed(() => {
+  const percent = completedPercent.value;
+  if (percent < 30) return "exception";
+  if (percent < 70) return "warning";
+  return "success";
+});
+
+const currentDate = computed(() => {
+  const now = new Date();
+  return now.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+});
+
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 6) return "凌晨好！";
+  if (hour < 12) return "上午好！";
+  if (hour < 14) return "中午好！";
+  if (hour < 18) return "下午好！";
+  return "晚上好！";
+});
+
+// 获取仪表盘数据
+const fetchDashboardData = async () => {
+  try {
+    // 获取待办事项数据
+    const todosResponse = await getTodos();
+    const todos = todosResponse.data || [];
+    recentTodos.value = todos.slice(0, 5); // 取最近5条
+
+    stats.value.todoCount = todos.length;
+    stats.value.todoCompletedCount = todos.filter(
+      (todo) => todo.completed
+    ).length;
+
+    // 获取公告数据
+    const noticesResponse = await getNotices();
+    const notices = noticesResponse.data || [];
+    recentNotices.value = notices.slice(0, 5); // 取最近5条
+
+    stats.value.noticeCount = notices.length;
+    if (notices.length > 0) {
+      stats.value.lastNoticeTime = notices[0].date;
+    }
+
+    // 获取用户数量
+    // 实际项目中可能需要一个单独的API接口来获取这些统计数据
+    // 这里为了简化，假设有10个用户
+    stats.value.userCount = 10;
+  } catch (error) {
+    console.error("获取仪表盘数据失败:", error);
+  }
+};
+
+// 类型标签映射
+const getPriorityLabel = (priority) => {
+  const map = {
+    info: "低",
+    warning: "中",
+    danger: "高",
+  };
+  return map[priority] || "未知";
+};
+
+const getNoticeTypeLabel = (type) => {
+  const map = {
+    info: "普通",
+    success: "成功",
+    warning: "警告",
+    danger: "危险",
+  };
+  return map[type] || "普通";
+};
+
+// 在组件挂载时获取数据
+onMounted(() => {
+  fetchDashboardData();
 });
 </script>
 
@@ -175,50 +267,36 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.dashboard-card {
-  height: 100%;
-}
-
 .card-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
 }
 
-.user-info {
+.card-header .el-icon {
+  margin-right: 8px;
+}
+
+.card-body {
   text-align: center;
-  line-height: 1.8;
+  padding: 10px 0;
 }
 
-.system-info {
-  line-height: 2;
+.card-body h2 {
+  font-size: 24px;
+  margin: 0 0 10px 0;
 }
 
-.quick-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+.card-body p {
+  margin: 0;
+  color: #909399;
 }
 
-.quick-actions .el-button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
+.mt-20 {
+  margin-top: 20px;
 }
 
-.notice-list {
-  padding: 10px;
-}
-
-.todo-list {
-  .todo-item {
-    margin-bottom: 10px;
-  }
-}
-
-.el-timeline-item {
-  padding-bottom: 20px;
+.empty-data {
+  padding: 20px 0;
 }
 </style>
